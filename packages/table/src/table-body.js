@@ -22,13 +22,30 @@ export default {
     rowClassName: [String, Function],
     rowStyle: [Object, Function],
     fixed: String,
-    highlight: Boolean
+    highlight: Boolean,
+    virtual: {
+      type: Boolean,
+      default: true
+    },
+    virtualSize: {
+      type: Number,
+      default: 20
+    },
+    rowHeight: {
+      type: Number,
+      default: 40
+    },
   },
 
   render(h) {
     const columnsHidden = this.columns.map((column, index) => this.isColumnHidden(index));
     return (
       <table
+        style={{
+          paddingTop: `${this.blankHeight}px`,
+          paddingBottom: `${(this.data.length - this.virtualData.length) * this.rowHeight - this.blankHeight}px`,
+          "border-collapse": "separate"
+        }}
         class="el-table__body"
         cellspacing="0"
         cellpadding="0"
@@ -112,6 +129,7 @@ export default {
       const rows = el.querySelectorAll('tbody > tr.el-table__row');
       const oldRow = rows[data.indexOf(oldVal)];
       const newRow = rows[data.indexOf(newVal)];
+      this.table.bodyWrapper.scrollTo(0, this.rowHeight * data.indexOf(newVal))
       if (oldRow) {
         removeClass(oldRow, 'current-row');
       } else if (rows) {
@@ -119,6 +137,26 @@ export default {
       }
       if (newRow) {
         addClass(newRow, 'current-row');
+      }
+    },
+    'store.states.data'(newVal, oldVal) {
+      this.table.bodyWrapper.scrollTo(0, 0);
+      this.virtualData = newVal.slice(0, this.virtualSize * 2);
+    },
+    scrollTop(newVal, oldVal) {
+      if (newVal === oldVal) return;
+      const el = this.$el;
+      if (!el) return;
+      const data = this.store.states.data;
+      const dataLength = this.store.states.data.length;
+      const size = this.virtualSize;
+      const totalHeight = this.data.length * this.rowHeight;
+      const realHeight = this.rowHeight * this.virtualSize;
+      this.blankHeight = Math.min(Math.floor(newVal / realHeight) * realHeight, totalHeight - realHeight);
+      let start = Math.floor(newVal / realHeight) * size;
+      this.virtualData = data.slice(start, start + size * 2 < dataLength ? start + size * 2 : dataLength);
+      if (this.virtualData.length < size){
+        this.blankHeight = this.blankHeight + ((size-this.virtualData.length)*this.rowHeight)
       }
     }
   },
@@ -151,12 +189,23 @@ export default {
 
   data() {
     return {
-      tooltipContent: ''
+      tooltipContent: '',
+      scrollTop: 0,
+      virtualData: [],
+      blankHeight: null
     };
   },
 
   created() {
     this.activateTooltip = debounce(50, tooltip => tooltip.handleShowPopper());
+  },
+
+  mounted() {
+    if (!this.table || !this.virtual) return;
+    const this_vm = this;
+    this.table.bodyWrapper.addEventListener('scroll', function () {
+      this_vm.scrollTop = this.scrollTop;
+    });
   },
 
   methods: {
