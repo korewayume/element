@@ -145,19 +145,15 @@ export default {
     },
     scrollTop(newVal, oldVal) {
       if (newVal === oldVal) return;
-      const el = this.$el;
-      if (!el) return;
-      const data = this.store.states.data;
-      const dataLength = this.store.states.data.length;
-      const size = this.virtualSize;
-      const totalHeight = this.data.length * this.rowHeight;
-      const realHeight = this.rowHeight * this.virtualSize;
-      this.blankHeight = Math.min(Math.floor(newVal / realHeight) * realHeight, totalHeight - realHeight);
-      let start = Math.floor(newVal / realHeight) * size;
-      this.virtualData = data.slice(start, start + size * 2 < dataLength ? start + size * 2 : dataLength);
-      if (this.virtualData.length < size){
-        this.blankHeight = this.blankHeight + ((size-this.virtualData.length)*this.rowHeight)
-      }
+      const data = this.data;
+      const dataLength = data.length;
+      const buffSize = this.virtualSize;
+      const doubleBuffSize = buffSize * 2;
+      const buffHeight = this.rowHeight * buffSize;
+      const start = Math.floor(newVal / buffHeight) * buffSize;
+      const end = start + doubleBuffSize < dataLength ? start + doubleBuffSize : dataLength;
+      this.virtualData = data.slice(start, end);
+      this.blankHeight = start * this.rowHeight;
     }
   },
 
